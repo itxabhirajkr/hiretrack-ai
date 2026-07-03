@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum JobStatus {
+  applied
+  screening
+  interview
+  offer
+  rejected
+  withdrawn
+}
+
+enum NotificationType {
+  status_change
+  reminder
+  ai_ready
+}
+
+enum EmbeddingStatus {
+  pending
+  processing
+  ready
+  failed
+}
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  refreshToken String?  @map("refresh_token")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  jobs          JobApplication[]
+  notifications Notification[]
+  resumes       Resume[]
+
+  @@map("users")
+}
+
+model JobApplication {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  company   String
+  role      String
+  status    JobStatus @default(applied)
+  jdUrl     String?   @map("jd_url")
+  salaryMin Int?      @map("salary_min")
+  salaryMax Int?      @map("salary_max")
+  location  String?
+  notes     String?
+  appliedAt DateTime  @map("applied_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user           User               @relation(fields: [userId], references: [id])
+  timelineEvents JobTimelineEvent[]
+  notifications  Notification[]
+  analyses       AiAnalysis[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("job_applications")
+}
+
+model JobTimelineEvent {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId     String     @map("job_id") @db.Uuid
+  oldStatus JobStatus? @map("old_status")
+  newStatus JobStatus  @map("new_status")
+  note      String?
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  job JobApplication @relation(fields: [jobId], references: [id])
+
+  @@index([jobId])
+  @@map("job_timeline_events")
+}
+
+model Notification {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  jobId     String?          @map("job_id") @db.Uuid
+  type      NotificationType
+  message   String
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User            @relation(fields: [userId], references: [id])
+  job  JobApplication? @relation(fields: [jobId], references: [id])
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Resume {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String          @map("user_id") @db.Uuid
+  filename        String
+  s3Key           String          @map("s3_key")
+  embeddingStatus EmbeddingStatus @default(pending) @map("embedding_status")
+  chunkCount      Int?            @map("chunk_count")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  user     User         @relation(fields: [userId], references: [id])
+  analyses AiAnalysis[]
+
+  @@index([userId])
+  @@map("resumes")
+}
+
+model AiAnalysis {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId       String   @map("job_id") @db.Uuid
+  resumeId    String   @map("resume_id") @db.Uuid
+  matchScore  Float?   @map("match_score")
+  gaps        Json?
+  suggestions Json?
+  rawResponse String?  @map("raw_response")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  job    JobApplication @relation(fields: [jobId], references: [id])
+  resume Resume         @relation(fields: [resumeId], references: [id])
+
+  @@index([jobId])
+  @@map("ai_analyses")
+}
