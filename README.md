@@ -23,3 +23,24 @@ _Instructions coming as we build_
 - `staging` — pre-production testing
 - `develop` — integration branch
 - `feature/xxx` — one branch per feature
+
+## Commit Convention
+
+This repo uses [Conventional Commits](https://www.conventionalcommits.org/).
+
+Format: `type: description`
+
+Types allowed:
+- `feat:` — new feature
+- `fix:` — bug fix
+- `docs:` — documentation only
+- `refactor:` — code change that neither fixes a bug nor adds a feature
+- `test:` — adding or updating tests
+- `chore:` — build process, tooling, dependencies
+- `perf:` — performance improvement
+- `ci:` — CI/CD changes
+
+Examples:
+- `feat: add JWT authentication middleware`
+- `fix: resolve Prisma connection pool exhaustion`
+- `test: add integration tests for auth routes`
